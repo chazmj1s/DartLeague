@@ -1,0 +1,11 @@
+<%# app/views/players/new.html.erb %>
+<% content_for :title, "Add Player – Darts League" %>
+
+<header class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+  <%= link_to "‹", players_path, class: "text-emerald-400 text-2xl leading-none" %>
+  <h1 class="text-lg font-bold">Add Player</h1>
+</header>
+
+<div class="px-4 pt-4">
+  <%= render "form", player: @player %>
+</div>

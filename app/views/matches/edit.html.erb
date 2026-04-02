@@ -1,0 +1,20 @@
+<%# app/views/matches/edit.html.erb %>
+<% content_for :title, "Edit Match – Darts League" %>
+
+<header class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+  <%= link_to "‹", match_path(@match), class: "text-emerald-400 text-2xl leading-none" %>
+  <h1 class="text-lg font-bold">Edit Match</h1>
+</header>
+
+<div class="px-4 pt-4 space-y-4">
+  <%= render "form", match: @match %>
+
+  <div class="pt-4 border-t border-gray-800">
+    <%= button_to match_path(@match),
+          method: :delete,
+          data: { turbo_confirm: "Delete this match? This cannot be undone." },
+          class: "w-full bg-red-950 text-red-400 font-semibold rounded-lg py-3 text-sm" do %>
+      Delete Match
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,79 @@
+<%# app/views/layouts/application.html.erb %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0f1117" />
+  <title><%= content_for?(:title) ? yield(:title) : "Darts League" %></title>
+
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%# Tailwind via CDN (swap for compiled asset in production) %>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#34d399', dark: '#059669', dim: '#1a3d30' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+</head>
+
+<body class="bg-gray-950 text-white min-h-screen">
+
+  <%# ── Flash messages ──────────────────────────────────────── %>
+  <% if notice.present? %>
+    <div id="flash-notice"
+         class="fixed top-0 inset-x-0 z-50 bg-emerald-800 text-emerald-100
+                text-sm font-medium px-4 py-3 text-center"
+         data-controller="flash">
+      <%= notice %>
+    </div>
+  <% end %>
+
+  <% if alert.present? %>
+    <div id="flash-alert"
+         class="fixed top-0 inset-x-0 z-50 bg-red-900 text-red-200
+                text-sm font-medium px-4 py-3 text-center"
+         data-controller="flash">
+      ⚠ <%= alert %>
+    </div>
+  <% end %>
+
+  <%# ── Main content ─────────────────────────────────────────── %>
+  <main class="max-w-lg mx-auto pb-24">
+    <%= yield %>
+  </main>
+
+  <%# ── Bottom navigation ───────────────────────────────────── %>
+  <nav class="fixed bottom-0 inset-x-0 z-40 flex bg-gray-900 border-t border-gray-700"
+       style="padding-bottom: env(safe-area-inset-bottom)">
+
+    <%= link_to matches_path,
+          class: "flex-1 flex flex-col items-center justify-center py-3 gap-0.5
+                  text-xs #{request.path.start_with?('/matches') ? 'text-emerald-400' : 'text-gray-500'}" do %>
+      <span class="text-xl leading-none">📅</span>
+      <span>Matches</span>
+    <% end %>
+
+    <%= link_to players_path,
+          class: "flex-1 flex flex-col items-center justify-center py-3 gap-0.5
+                  text-xs #{request.path.start_with?('/players') ? 'text-emerald-400' : 'text-gray-500'}" do %>
+      <span class="text-xl leading-none">👥</span>
+      <span>Roster</span>
+    <% end %>
+
+  </nav>
+
+</body>
+</html>

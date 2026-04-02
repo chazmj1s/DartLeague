@@ -1,0 +1,11 @@
+<%# app/views/matches/new.html.erb %>
+<% content_for :title, "New Match – Darts League" %>
+
+<header class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+  <%= link_to "‹", matches_path, class: "text-emerald-400 text-2xl leading-none" %>
+  <h1 class="text-lg font-bold">New Match</h1>
+</header>
+
+<div class="px-4 pt-4">
+  <%= render "form", match: @match %>
+</div>

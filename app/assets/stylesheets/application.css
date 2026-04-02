@@ -1,0 +1,41 @@
+/*
+ * app/assets/stylesheets/application.css
+ *
+ * Tailwind utility classes are loaded from CDN in the layout.
+ * This file holds only the small number of custom styles that
+ * Tailwind's default classes don't cover.
+ */
+
+/* ── Safe-area padding on modern mobile browsers ── */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Smooth form radio toggle without JS ── */
+.radio-toggle input[type="radio"] {
+  position: absolute;
+  opacity:  0;
+  width:    0;
+  height:   0;
+}
+
+/* ── Suppress the default <details> triangle on WebKit ── */
+details > summary::-webkit-details-marker { display: none; }
+details > summary { list-style: none; }
+
+/* ── Turbo progress bar colour ── */
+.turbo-progress-bar {
+  background-color: #34d399; /* emerald-400 */
+}
+
+/* ── Screen-reader only ── */
+.sr-only {
+  position: absolute;
+  width:     1px;
+  height:    1px;
+  padding:   0;
+  margin:    -1px;
+  overflow:  hidden;
+  clip:      rect(0,0,0,0);
+  border:    0;
+}

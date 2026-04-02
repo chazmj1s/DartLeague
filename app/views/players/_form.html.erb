@@ -1,0 +1,41 @@
+<%# app/views/players/_form.html.erb %>
+<%= form_with model: player, local: true, class: "space-y-5" do |f| %>
+
+  <% if player.errors.any? %>
+    <div class="bg-red-900 border border-red-700 rounded-lg px-4 py-3 text-sm text-red-200">
+      <% player.errors.full_messages.each do |msg| %>
+        <p>⚠ <%= msg %></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :name, "Name", class: "block text-xs text-gray-400 mb-1" %>
+    <%= f.text_field :name,
+          placeholder: "Player name",
+          class: "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5
+                  text-white text-sm focus:outline-none focus:border-emerald-500" %>
+  </div>
+
+  <div>
+    <%= f.label :gender, "Gender", class: "block text-xs text-gray-400 mb-1" %>
+    <div class="flex rounded-lg overflow-hidden border border-gray-700">
+      <% [["female", "Female"], ["male", "Male"]].each do |val, label| %>
+        <label class="flex-1 text-center py-2.5 text-sm cursor-pointer
+                       <%= player.gender == val ? 'bg-emerald-700 text-white font-semibold' :
+                                                  'bg-gray-800 text-gray-400' %>">
+          <%= f.radio_button :gender, val, class: "sr-only" %>
+          <%= label %>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <%= f.submit player.new_record? ? "Add Player" : "Save Changes",
+          class: "flex-1 bg-emerald-700 text-white font-semibold rounded-lg py-3 text-sm cursor-pointer" %>
+    <%= link_to "Cancel", players_path,
+          class: "flex-1 bg-gray-800 text-gray-300 font-semibold rounded-lg py-3 text-sm text-center" %>
+  </div>
+
+<% end %>
