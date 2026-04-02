@@ -15,13 +15,17 @@ class Player < ApplicationRecord
   has_many :absences, dependent: :destroy
 
   validates :name,   presence: true, uniqueness: { case_sensitive: false }
+  validates :rank, numericality: { only_integer: true,
+                                   greater_than_or_equal_to: 1,
+                                   less_than_or_equal_to: 3 }
   validates :gender, inclusion: { in: GENDERS }
   validate  :roster_not_full, on: :create
 
   scope :active,  -> { where(active: true) }
   scope :male,    -> { where(gender: "male") }
   scope :female,  -> { where(gender: "female") }
-  scope :ordered, -> { order(:name) }
+  scope :ordered, -> { order(rank: :asc, name: :asc) }
+  scope :by_rank, -> { order(rank: :asc, name: :asc) }
 
   # All active players who are not marked absent for the given match
   def self.available_for(match)

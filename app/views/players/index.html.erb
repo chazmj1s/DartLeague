@@ -48,6 +48,9 @@
               <%= player.female? ? 'bg-purple-950 text-purple-300' : 'bg-blue-950 text-blue-300' %>">
               <%= player.gender_label %>
             </span>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-950 text-yellow-300">
+              Rank <%= player.rank %>
+            </span>
           </div>
           <div class="flex items-center gap-2">
             <%= link_to edit_player_path(player),

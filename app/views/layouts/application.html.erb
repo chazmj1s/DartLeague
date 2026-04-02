@@ -33,22 +33,30 @@
 
   <%# ── Flash messages ──────────────────────────────────────── %>
   <% if notice.present? %>
-    <div id="flash-notice"
-         class="fixed top-0 inset-x-0 z-50 bg-emerald-800 text-emerald-100
-                text-sm font-medium px-4 py-3 text-center"
-         data-controller="flash">
-      <%= notice %>
-    </div>
-  <% end %>
+  <div id="flash-notice"
+       class="fixed top-0 inset-x-0 z-50 bg-emerald-800 text-emerald-100
+              text-sm font-medium px-4 py-3 flex items-center justify-between gap-4"
+       data-controller="flash">
+    <span><%= notice %></span>
+    <button onclick="this.parentElement.remove()"
+            class="text-emerald-200 hover:text-white font-bold text-lg leading-none shrink-0">
+      ✕
+    </button>
+  </div>
+<% end %>
 
-  <% if alert.present? %>
-    <div id="flash-alert"
-         class="fixed top-0 inset-x-0 z-50 bg-red-900 text-red-200
-                text-sm font-medium px-4 py-3 text-center"
-         data-controller="flash">
-      ⚠ <%= alert %>
-    </div>
-  <% end %>
+<% if alert.present? %>
+  <div id="flash-alert"
+       class="fixed top-0 inset-x-0 z-50 bg-red-900 text-red-200
+              text-sm font-medium px-4 py-3 flex items-center justify-between gap-4"
+       data-controller="flash">
+    <span>⚠ <%= alert %></span>
+    <button onclick="this.parentElement.remove()"
+            class="text-red-200 hover:text-white font-bold text-lg leading-none shrink-0">
+      ✕
+    </button>
+  </div>
+<% end %>
 
   <%# ── Main content ─────────────────────────────────────────── %>
   <main class="max-w-lg mx-auto pb-24">

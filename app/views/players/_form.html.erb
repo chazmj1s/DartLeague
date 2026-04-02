@@ -31,6 +31,23 @@
     </div>
   </div>
 
+  <div>
+    <%= f.label :rank, "Rank", class: "block text-xs text-gray-400 mb-1" %>
+    <div class="flex rounded-lg overflow-hidden border border-gray-700">
+      <% [1, 2, 3].each do |r| %>
+        <label class="flex-1 text-center py-2.5 text-sm cursor-pointer
+                     <%= f.object.rank == r ? 'bg-emerald-700 text-white font-semibold' :
+                                                 'bg-gray-800 text-gray-400' %>">
+          <%= f.radio_button :rank, r, class: "sr-only" %>
+          <%= r %>
+        </label>
+      <% end %>
+    </div>
+    <p class="text-xs text-gray-500 mt-1">
+      Rank 1 = highest priority for odd game slots
+    </p>
+  </div>
+
   <div class="flex gap-3 pt-2">
     <%= f.submit player.new_record? ? "Add Player" : "Save Changes",
           class: "flex-1 bg-emerald-700 text-white font-semibold rounded-lg py-3 text-sm cursor-pointer" %>

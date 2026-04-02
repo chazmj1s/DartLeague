@@ -16,6 +16,10 @@
 #    • No two players may partner together in more than one doubles game
 #    • Any gender combination is permitted
 #
+#  Game type exclusivity
+#    • No player may appear in both games of the same game type
+#      e.g. a player in Singles Cricket game 1 cannot play Singles Cricket game 2
+#
 #  Load balancing
 #    • Total player-game slots: 4×1 + 6×2 + 1×4 = 20
 #    • Target load = 20 ÷ roster_size  (distribute as evenly as possible)
@@ -72,7 +76,7 @@ class PairingService
   # Human-readable summary of load distribution after assignment.
   def load_summary
     validate!
-    load = fresh_load_counter
+    load     = fresh_load_counter
     schedule = build_schedule(load)
     schedule.map { |game, players|
       { game: game.display_name, players: players.map(&:name) }
@@ -86,12 +90,12 @@ class PairingService
 
   def roster_summary
     {
-      total:         @players.size,
-      women:         @women.size,
-      men:           @men.size,
-      total_slots:   TOTAL_SLOTS,
-      target_load:   (TOTAL_SLOTS.to_f / @players.size).round(2),
-      valid_pairs:   @players.combination(2).count
+      total:       @players.size,
+      women:       @women.size,
+      men:         @men.size,
+      total_slots: TOTAL_SLOTS,
+      target_load: (TOTAL_SLOTS.to_f / @players.size).round(2),
+      valid_pairs: @players.combination(2).count
     }
   end
 
@@ -103,18 +107,18 @@ class PairingService
     n = @players.size
 
     raise InsufficientPlayersError,
-      "#{n} player(s) available; minimum is #{Player::MIN_ROSTER}." \
+          "#{n} player(s) available; minimum is #{Player::MIN_ROSTER}." \
       if n < Player::MIN_ROSTER
 
     raise InsufficientPlayersError,
-      "No female players are available. At least one woman must play each match." \
+          "No female players are available. At least one woman must play each match." \
       if @women.empty?
 
     # 6 doubles games need 6 unique pairs; C(n,2) must be ≥ 6
     min_for_doubles = min_players_for_unique_doubles(DOUBLES_COUNT)
     raise PairingImpossibleError,
-      "Need at least #{min_for_doubles} players to fill #{DOUBLES_COUNT} unique doubles pairs; " \
-      "only #{n} available." \
+          "Need at least #{min_for_doubles} players to fill #{DOUBLES_COUNT} unique doubles pairs; " \
+            "only #{n} available." \
       if n < min_for_doubles
   end
 
@@ -130,25 +134,28 @@ class PairingService
   # Returns an array of [game, [players]] in sequence order.
   # Accepts an optional pre-seeded load counter (used by preview/load_summary).
   def build_schedule(load = nil)
-    load        ||= fresh_load_counter
-    used_pairs    = Set.new          # Set of sorted [id,id] arrays
-    female_cover  = { singles: false, doubles: false, team: false }
+    load         ||= fresh_load_counter
+    used_pairs     = Set.new                        # sorted [id,id] pairs already partnered
+    female_cover   = { singles: false, doubles: false, team: false }
+    type_usage     = Hash.new { |h, k| h[k] = [] } # game_type => [players already assigned]
 
     schedule = []
 
-    # Process games in sequence order so the schedule reads naturally
     @match.games.by_sequence.each do |game|
       players = case game.format
                 when "singles"
-                  pick_singles(game, load, female_cover)
+                  pick_singles(game, load, female_cover, type_usage)
                 when "doubles"
-                  pick_doubles(game, load, used_pairs, female_cover)
+                  pick_doubles(game, load, used_pairs, female_cover, type_usage)
                 when "team"
                   pick_team(game, load, female_cover)
                 end
 
       # Record load
       players.each { |p| load[p] += 1 }
+
+      # Record which players have now played this game type
+      type_usage[game.game_type].concat(players)
 
       # Mark pairs used
       players.combination(2).each { |pair| used_pairs << pair.map(&:id).sort }
@@ -160,25 +167,23 @@ class PairingService
   end
 
   # ── Singles picker ──────────────────────────────────────────────────────────
-  # Pick the least-loaded player. If female coverage for singles is still
-  # unfulfilled, prefer a woman among the least-loaded candidates.
+  # Pick the least-loaded player who has not already played this game type.
+  # If female singles coverage is still unmet, prefer a woman.
 
-  def pick_singles(_game, load, female_cover)
-    pool = @players.sort_by { |p| [load[p], rand] }
+  def pick_singles(game, load, female_cover, type_usage)
+    already_played = type_usage[game.game_type]
+
+    pool = @players
+             .reject { |p| already_played.include?(p) }
+             .sort_by { |p| [load[p], p.rank] }
 
     player = if !female_cover[:singles]
-               # Must reserve a woman for singles — pick the least-loaded woman
-               # unless a man is at the same load level and a woman is still available
-               woman = pool.find(&:female?)
-               # Only force the woman if she's not more than 1 game behind the
-               # least-loaded player (avoids sacrificing balance badly)
+               woman    = pool.find(&:female?)
                min_load = load[pool.first]
                if woman && load[woman] <= min_load + 1
                  female_cover[:singles] = true
                  woman
                else
-                 # Woman too far behind; pick best-load player and we'll rely
-                 # on future slots to cover the female mandate
                  pool.first
                end
              else
@@ -190,24 +195,28 @@ class PairingService
   end
 
   # ── Doubles picker ──────────────────────────────────────────────────────────
-  # Pick the two least-loaded players who haven't paired together yet.
-  # If female doubles coverage is still unmet, ensure at least one woman
-  # is in the pair when possible.
+  # Pick the two least-loaded players who:
+  #   • have not already played this game type
+  #   • have not already been partnered together this match
+  # If female doubles coverage is still unmet, ensure at least one woman.
 
-  def pick_doubles(_game, load, used_pairs, female_cover)
+  def pick_doubles(game, load, used_pairs, female_cover, type_usage)
+    already_played    = type_usage[game.game_type]
     remaining_doubles = @match.games.doubles.count -
                         @match.games.doubles.where(status: "assigned").count
 
-    need_female_now = !female_cover[:doubles] && must_place_female_now?(@women, load, remaining_doubles)
+    need_female_now = !female_cover[:doubles] &&
+                      must_place_female_now?(@women, load, remaining_doubles)
 
     pair = if need_female_now
-             pick_pair_with_female(load, used_pairs)
+             pick_pair_with_female(load, used_pairs, already_played)
            else
-             pick_best_pair(load, used_pairs)
+             pick_best_pair(load, used_pairs, already_played)
            end
 
     raise PairingImpossibleError,
-      "Cannot build a unique doubles pair from the available players." unless pair
+          "Cannot build a unique doubles pair for #{game.display_name} " \
+            "from the available players." unless pair
 
     female_cover[:doubles] = true if pair.any?(&:female?)
     pair
@@ -216,20 +225,16 @@ class PairingService
   # ── Team picker ─────────────────────────────────────────────────────────────
   # Pick 4 players. Ensure ≥1 woman is included (rule requires it).
   # Among valid selections, prefer the 4 least-loaded players.
+  # (Only one team game exists so no type_usage exclusion needed.)
 
   def pick_team(_game, load, female_cover)
-    # Sort all players by load ascending
-    by_load = @players.sort_by { |p| [load[p], rand] }
-
-    # Try the 4 least-loaded first
+    by_load = @players.sort_by { |p| [load[p], p.rank] }
     candidates = by_load.first(TEAM_SIZE)
 
-    # If no woman among them, swap the most-loaded of the 4 with the
-    # least-loaded woman not already in the group
     unless candidates.any?(&:female?)
-      woman       = by_load.find { |p| p.female? && !candidates.include?(p) }
-      swap_out    = candidates.max_by { |p| load[p] }
-      candidates  = (candidates - [swap_out] + [woman]).compact
+      woman      = by_load.find { |p| p.female? && !candidates.include?(p) }
+      swap_out   = candidates.max_by { |p| load[p] }
+      candidates = (candidates - [swap_out] + [woman]).compact
     end
 
     female_cover[:team] = true if candidates.any?(&:female?)
@@ -238,28 +243,30 @@ class PairingService
 
   # ── Pair selection helpers ──────────────────────────────────────────────────
 
-  # Best pair = lowest combined load, unique partnership
-  def pick_best_pair(load, used_pairs)
+  # Best pair = lowest combined load, unique partnership, not already
+  # assigned to this game type.
+  def pick_best_pair(load, used_pairs, already_played = [])
     @players
+      .reject { |p| already_played.include?(p) }
       .combination(2)
       .reject { |a, b| used_pairs.include?([a.id, b.id].sort) }
-      .min_by { |a, b| load[a] + load[b] + rand * 0.001 }
+      .min_by { |a, b| [load[a] + load[b], a.rank + b.rank] }
   end
 
-  # Best pair that includes at least one woman, unique partnership
-  def pick_pair_with_female(load, used_pairs)
+  # Best pair that includes at least one woman, unique partnership, not
+  # already assigned to this game type.
+  def pick_pair_with_female(load, used_pairs, already_played = [])
     @players
+      .reject { |p| already_played.include?(p) }
       .combination(2)
       .select { |a, b| a.female? || b.female? }
       .reject { |a, b| used_pairs.include?([a.id, b.id].sort) }
-      .min_by { |a, b| load[a] + load[b] + rand * 0.001 }
+      .min_by { |a, b| [load[a] + load[b], a.rank + b.rank] }
   end
 
-  # Decide whether female doubles coverage is now urgent:
-  # Returns true if fewer remaining doubles slots than women who still need
-  # their first doubles game — i.e. we can't afford to skip this slot.
-  def must_place_female_now?(women, load, remaining_slots)
-    # If only 1 doubles slot left and no woman has played doubles yet → urgent
+  # Returns true when we are down to the last doubles slot and female
+  # doubles coverage has not yet been met.
+  def must_place_female_now?(_women, _load, remaining_slots)
     remaining_slots <= 1
   end
 

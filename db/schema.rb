@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2024_01_01_000005) do
+ActiveRecord::Schema[8.1].define(version: 2024_01_02_000001) do
   create_table "absences", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "match_id", null: false
@@ -62,8 +62,10 @@ ActiveRecord::Schema[8.1].define(version: 2024_01_01_000005) do
     t.datetime "created_at", null: false
     t.string "gender", null: false
     t.string "name", null: false
+    t.integer "rank", default: 1, null: false
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_players_on_name", unique: true
+    t.index ["rank"], name: "index_players_on_rank"
   end
 
   add_foreign_key "absences", "matches"

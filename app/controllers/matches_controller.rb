@@ -3,7 +3,7 @@ class MatchesController < ApplicationController
   before_action :set_match, only: %i[show edit update destroy finalize reassign]
 
   def index
-    @matches = Match.order(match_date: :desc)
+    @matches = Match.order(match_date: :asc)
   end
 
   def show

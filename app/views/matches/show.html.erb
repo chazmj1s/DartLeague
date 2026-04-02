@@ -3,31 +3,34 @@
 <div class="min-h-screen bg-gray-950 text-white pb-24">
 
   <%# ── Sticky header ──────────────────────────────────────────── %>
-  <header class="bg-gray-900 border-b border-gray-700 px-4 py-4 sticky top-0 z-10">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-lg font-bold text-emerald-400"><%= @match.opponent %></h1>
-        <p class="text-xs text-gray-400">
-          <%= @match.match_date.strftime("%A, %B %-d") %>
-          &bull; <%= @match.location&.capitalize %>
-        </p>
-      </div>
-      <span class="px-2 py-1 rounded text-xs font-semibold
-        <%= @match.finalized? ? 'bg-emerald-700 text-emerald-100' :
-            @match.completed?  ? 'bg-blue-700 text-blue-100'      :
-                                 'bg-yellow-700 text-yellow-100' %>">
-        <%= @match.status.capitalize %>
-      </span>
+  <header class="flex items-center justify-between px-4 py-4 sticky top-0 z-10 bg-gray-950 border-b border-gray-800">
+    <div class="flex items-center gap-3">
+      <%= link_to matches_path,
+                  class: "text-emerald-400 text-2xl leading-none" do %>‹<% end %>
+      <h1 class="text-lg font-bold text-white"><%= @match.opponent %></h1>
     </div>
+    <span class="text-xs font-bold px-2 py-0.5 rounded-full
+    <%= if @match.finalized?
+           'bg-emerald-900 text-emerald-300'
+        else
+          @match.completed? ? 'bg-blue-900 text-blue-300' :
+            'bg-yellow-900 text-yellow-300'
+        end %>">
+      <%= @match.status.capitalize %>
+    </span>
   </header>
 
   <div class="px-4 pt-4 space-y-5">
 
     <%# ── Roster / Absence toggles ──────────────────────────────── %>
     <section>
-      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-        Roster &amp; Attendance
-      </h2>
+      <details open>
+        <summary class="flex items-center justify-between cursor-pointer list-none mb-2">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Roster &amp; Attendance
+          </h2>
+          <span class="text-gray-500 text-xs">tap to toggle</span>
+        </summary>
       <div class="grid grid-cols-2 gap-2">
         <% @players.each do |player| %>
           <% absent     = @absent.include?(player) %>
@@ -60,6 +63,7 @@
           </div>
         <% end %>
       </div>
+      </details>
     </section>
 
     <%# ── Action buttons ─────────────────────────────────────────── %>
@@ -87,73 +91,76 @@
       <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
         Games (11 total · 20 player slots)
       </h2>
-      <div class="space-y-2">
-        <% @games.each do |game| %>
-          <div class="bg-gray-800 rounded-xl px-4 py-3">
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <p class="text-xs text-gray-400 uppercase tracking-wide">
-                  <%= game.format_icon %> Game <%= game.sequence %>
-                  &bull; <%= game.display_name %>
-                </p>
 
-                <% if game.home_players.any? %>
-                  <p class="text-sm font-semibold mt-0.5 truncate">
-                    <%= game.home_players.map { |p|
-                          "#{p.name}"
-                        }.join(" &amp; ").html_safe %>
+      <% @games.group_by(&:display_name).each do |game_type, games| %>
+        <h3 class="text-sm font-semibold text-white mt-4 mb-2">
+          <%= games.first.format_icon %> <%= game_type %>
+        </h3>
+
+        <div class="flex flex-wrap gap-2">
+          <% games.each do |game| %>
+            <div class="bg-gray-800 rounded-xl px-4 py-3 flex-1 min-w-[48%]">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-xs text-gray-400 uppercase tracking-wide">
+                    Game <%= game.sequence %>
                   </p>
-                <% else %>
-                  <p class="text-sm text-yellow-400 mt-0.5">⚠ Unassigned</p>
+
+                  <% if game.home_players.any? %>
+                    <p class="text-sm font-semibold mt-0.5">
+                      <%= game.home_players.map { |p| p.name }.join(" &amp; ").html_safe %>
+                    </p>
+                  <% else %>
+                    <p class="text-sm text-yellow-400 mt-0.5">⚠ Unassigned</p>
+                  <% end %>
+                </div>
+
+                <% if game.completed? %>
+              <span class="text-xs font-bold bg-blue-800 text-blue-200
+                           rounded px-2 py-1 shrink-0">
+                <%= game.home_score %>–<%= game.away_score %>
+              </span>
                 <% end %>
               </div>
 
-              <% if game.completed? %>
-                <span class="text-xs font-bold bg-blue-800 text-blue-200
-                             rounded px-2 py-1 shrink-0">
-                  <%= game.home_score %>–<%= game.away_score %>
-                </span>
+              <%# ── Inline edit form ──────────────────────────────── %>
+              <% unless @match.finalized? || @match.completed? %>
+                <details class="mt-2">
+                  <summary class="text-xs text-emerald-400 cursor-pointer select-none">
+                    Edit players
+                  </summary>
+                  <div class="mt-2 border-t border-gray-700 pt-2">
+                    <%= form_with url: match_game_path(@match, game),
+                                  method: :patch, local: true do |f| %>
+                      <p class="text-xs text-gray-400 mb-1">
+                        Select exactly <%= game.player_count %> player(s):
+                      </p>
+                      <div class="grid grid-cols-2 gap-1 mb-2">
+                        <% Player.available_for(@match).each do |p| %>
+                          <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox"
+                                   name="game[player_ids][]"
+                                   value="<%= p.id %>"
+                                   <%= "checked" if game.home_players.include?(p) %>
+                                   class="rounded accent-emerald-500">
+                            <%= p.name %>
+                            <span class="text-xs text-gray-500">
+                              (<%= p.gender_label %>)
+                            </span>
+                          </label>
+                        <% end %>
+                      </div>
+                      <%= f.submit "Save",
+                                   class: "w-full bg-emerald-700 text-white rounded
+                                py-2 text-sm font-semibold" %>
+                    <% end %>
+                  </div>
+                </details>
               <% end %>
             </div>
-
-            <%# ── Inline edit form ──────────────────────────────── %>
-            <% unless @match.finalized? || @match.completed? %>
-              <details class="mt-2">
-                <summary class="text-xs text-emerald-400 cursor-pointer select-none">
-                  Edit players
-                </summary>
-                <div class="mt-2 border-t border-gray-700 pt-2">
-                  <%= form_with url: match_game_path(@match, game),
-                                method: :patch, local: true do |f| %>
-                    <p class="text-xs text-gray-400 mb-1">
-                      Select exactly <%= game.player_count %> player(s):
-                    </p>
-                    <div class="grid grid-cols-2 gap-1 mb-2">
-                      <% Player.available_for(@match).each do |p| %>
-                        <label class="flex items-center gap-2 text-sm">
-                          <input type="checkbox"
-                                 name="game[player_ids][]"
-                                 value="<%= p.id %>"
-                                 <%= "checked" if game.home_players.include?(p) %>
-                                 class="rounded accent-emerald-500">
-                          <%= p.name %>
-                          <span class="text-xs text-gray-500">
-                            (<%= p.gender_label %>)
-                          </span>
-                        </label>
-                      <% end %>
-                    </div>
-                    <%= f.submit "Save",
-                          class: "w-full bg-emerald-700 text-white rounded
-                                  py-2 text-sm font-semibold" %>
-                  <% end %>
-                </div>
-              </details>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
+          <% end %>
+        </div>
+      <% end %>
     </section>
-
   </div>
 </div>

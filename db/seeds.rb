@@ -1,47 +1,109 @@
 # db/seeds.rb
-# Current roster: Linda (F), Anita (F), Mike (M), Dave (M), Charlie (M), Ronnie (M)
+# ─────────────────────────────────────────────────────────────────────────────
+# Seeds the roster and a 4-match schedule with mock data.
+# Replace opponent names, dates, and locations with real data before go-live.
+# Run with:  rails db:seed
+# Reset and re-run:  rails db:seed:replant   (Rails 6+)
+# ─────────────────────────────────────────────────────────────────────────────
 
-puts "Seeding players..."
+puts "=" * 60
+puts "Seeding Darts League..."
+puts "=" * 60
 
-[
-  { name: "Linda",   gender: "female" },
-  { name: "Anita",   gender: "female" },
-  { name: "Mike",    gender: "male"   },
-  { name: "Dave",    gender: "male"   },
-  { name: "Charlie", gender: "male"   },
-  { name: "Ronnie",  gender: "male"   },
-  # Roster has 2 open slots (max 8). Uncomment to add:
-  # { name: "Player7", gender: "female" },
-  # { name: "Player8", gender: "male"   },
-].each do |attrs|
+# ── 1. Roster ─────────────────────────────────────────────────────────────────
+
+puts "\n▸ Players..."
+
+ROSTER = [
+  { name: "Linda",   gender: "female", rank: 3 },
+  { name: "Anita",   gender: "female", rank: 3 },
+  { name: "Mike",    gender: "male",   rank: 1 },
+  { name: "Dave",    gender: "male",   rank: 1 },
+  { name: "Charlie", gender: "male",   rank: 2 },
+  { name: "Ronnie",  gender: "male",   rank: 2 }
+  # Two open slots — uncomment and rename when roster expands (max 8):
+  # { name: "Player 7", gender: "female" },
+  # { name: "Player 8", gender: "male"   },
+].freeze
+
+ROSTER.each do |attrs|
   Player.find_or_create_by!(name: attrs[:name]) { |p| p.gender = attrs[:gender] }
 end
 
-puts "  #{Player.count} players: #{Player.ordered.map { |p| "#{p.name}(#{p.gender_label})" }.join(', ')}"
+puts "  #{Player.active.count} players: " \
+       "#{Player.active.ordered.map { |p| "#{p.name}" }.join(', ')}"
 
-puts "Seeding sample match..."
+# ── 2. Match schedule ─────────────────────────────────────────────────────────
+#
+# Four matches spread across the season.
+# *** Replace the opponent names, dates, and locations with real fixtures. ***
+#
+# Dates below are relative to today so the seed data is always in the future
+# no matter when you run it. Swap Date.today + N for literal dates, e.g.:
+#   match_date: Date.new(2025, 9, 12)
 
-match = Match.build_standard_slate(
-  opponent:   "The Red Lion",
-  match_date: Date.today + 7,
-  location:   "home"
-)
-match.save!
+puts "\n▸ Matches..."
 
-puts "Assigning pairings..."
-PairingService.new(match).assign!
+SCHEDULE = [
+  {
+    opponent:   "Elaine, Show Us Those Trips!",
+    match_date: Date.new(2026,4, 7),
+    location:   "Rags"
+  },
+  {
+    opponent:   "It's Irrelevant",
+    match_date: Date.new(2026,4, 14),
+    location:   "Top Spin"
+  },
+  {
+    opponent:   "Diddler & Co.",
+    match_date: Date.new(2026,4, 21),
+    location:   "Crown & Anchor"
+  },
+  {
+    opponent:   "Elaine, Show Us Those Trips!",
+    match_date: Date.new(2026,4, 28),
+    location:   "Top Spin"
+  },
+].freeze
 
-summary = PairingService.new(match).roster_summary
-puts "  #{summary[:total]} players, #{summary[:total_slots]} slots, " \
-     "target load #{summary[:target_load]} games/player"
+SCHEDULE.each do |fixture|
+  # Skip if a match against this opponent on this date already exists
+  # so re-running seeds is safe
+  next if Match.exists?(opponent: fixture[:opponent], match_date: fixture[:match_date])
 
-puts "\nGame assignments:"
-match.games.by_sequence.each do |game|
-  names = game.home_players.map { |p| "#{p.name}(#{p.gender_label})" }.join(" & ")
-  puts "  #{game.sequence.to_s.rjust(2)}. #{game.display_name.ljust(20)} #{names}"
+  print "  Creating match vs #{fixture[:opponent]}..."
+
+  match = Match.build_standard_slate(
+    opponent:   fixture[:opponent],
+    match_date: fixture[:match_date],
+    location:   fixture[:location]
+  )
+  match.save!
+
+  begin
+    PairingService.new(match).assign!
+    print " pairings assigned."
+  rescue PairingService::InsufficientPlayersError,
+    PairingService::PairingImpossibleError => e
+    print " ⚠ could not assign pairings: #{e.message}"
+  end
+
+  puts
 end
 
-puts "\nLoad distribution:"
-match.load_report.sort_by { |_, v| -v }.each do |player, count|
-  puts "  #{player.name.ljust(10)} #{count} games"
+# ── 3. Summary ────────────────────────────────────────────────────────────────
+
+puts "\n▸ Schedule summary:"
+
+Match.order(:match_date).each do |match|
+  assigned  = match.games.count { |g| g.status == "assigned"  }
+  completed = match.games.count { |g| g.status == "completed" }
+  puts "  #{match.match_date.strftime('%b %-d').ljust(8)} " \
+         "#{match.location.capitalize.ljust(5)} " \
+         "vs #{match.opponent.ljust(25)} " \
+         "[#{assigned} assigned, #{completed} completed]"
 end
+
+puts "\nDone! #{Player.active.count} players, #{Match.count} matches seeded."
+puts "=" * 60
