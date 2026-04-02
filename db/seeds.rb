@@ -27,7 +27,10 @@ ROSTER = [
 ].freeze
 
 ROSTER.each do |attrs|
-  Player.find_or_create_by!(name: attrs[:name]) { |p| p.gender = attrs[:gender] }
+  player = Player.find_or_initialize_by(name: attrs[:name])
+  player.gender = attrs[:gender]
+  player.rank   = attrs[:rank]
+  player.save!
 end
 
 puts "  #{Player.active.count} players: " \

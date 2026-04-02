@@ -33,12 +33,15 @@
 
   <div>
     <%= f.label :rank, "Rank", class: "block text-xs text-gray-400 mb-1" %>
-    <div class="flex rounded-lg overflow-hidden border border-gray-700">
+    <div class="flex rounded-lg overflow-hidden border border-gray-700"
+         id="rank-toggle">
       <% [1, 2, 3].each do |r| %>
-        <label class="flex-1 text-center py-2.5 text-sm cursor-pointer
-                     <%= f.object.rank == r ? 'bg-emerald-700 text-white font-semibold' :
-                                                 'bg-gray-800 text-gray-400' %>">
-          <%= f.radio_button :rank, r, class: "sr-only" %>
+        <label id="rank-label-<%= r %>"
+               class="flex-1 text-center py-2.5 text-sm cursor-pointer
+                    <%= f.object.rank == r ? 'bg-emerald-700 text-white font-semibold' :
+                                                'bg-gray-800 text-gray-400' %>">
+          <%= f.radio_button :rank, r, class: "sr-only",
+                             onchange: "updateRankToggle(#{r})" %>
           <%= r %>
         </label>
       <% end %>
@@ -47,6 +50,21 @@
       Rank 1 = highest priority for odd game slots
     </p>
   </div>
+
+  <script>
+      function updateRankToggle(selected) {
+          [1, 2, 3].forEach(function(r) {
+              var label = document.getElementById('rank-label-' + r);
+              if (r === selected) {
+                  label.className = label.className
+                      .replace('bg-gray-800 text-gray-400', 'bg-emerald-700 text-white font-semibold');
+              } else {
+                  label.className = label.className
+                      .replace('bg-emerald-700 text-white font-semibold', 'bg-gray-800 text-gray-400');
+              }
+          });
+      }
+  </script>
 
   <div class="flex gap-3 pt-2">
     <%= f.submit player.new_record? ? "Add Player" : "Save Changes",
